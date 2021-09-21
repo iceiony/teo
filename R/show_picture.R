@@ -25,6 +25,25 @@ save_content <- function(
     } else {
       fs::file_copy(path, local_path)
     }
+    
+    if(fs::path_ext(local_path) == 'mp4'){
+      convert_to_webm(local_path)
+    }
+}
+
+#' Converts a given video file to webm format
+#' 
+#' @param path (character) Local file path where the video file is located.
+#' 
+#' @export
+#' 
+convert_to_webm <- function(path){
+  cmd <- str_glue("
+    ffmpeg  -i {path}  -b:v 0  -crf 30  -pass 1  -an -f webm -y /dev/null;
+    ffmpeg  -i {path}  -b:v 0  -crf 30  -pass 2  {fs::path_ext_remove(path)}.webm;
+    rm {path};
+  ")
+  system(cmd);
 }
 
 #' Transforms a `teo` package function return value into a picture in the viewer
