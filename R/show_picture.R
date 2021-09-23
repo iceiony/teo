@@ -1,34 +1,56 @@
-#' Shows a random picture of Teo
+#'  Creates a token symbol that would display as a picture in the viewer
+#' 
+#'  The token names are used to filter through picture names before randomly
+#'  selecting one for display.
+#'  
+#'  @param names (character) The token names.
+#'  
+#'  @return A toe_picture class object that can render in the RStudio viewer.
+#' 
 #' @export 
-teo <- function(){
-  structure('teo',  class = 'teo_picture')
+#' 
+token <- function(names){
+  structure(names,  class = 'teo_picture')
+}
+
+#' Arithmetic operator + for picture tokens
+#' 
+#' @param e1 (teo_picture) The first picture.
+#' @param e2 (teo_picture) The second picture.
+#' 
+#' @return A new token that will filter images based on both pictures.
+#' 
+#' @export
+#' 
+`+.teo_picture` <- function(e1, e2){
+  token(c(e1, e2))
 }
 
 #' Saves to the image database a given image
 #' @param path (character) A local path or URL where the image can be found
 #' @export
 save_content <- function(
-   path,
-   type = 'teo'
+  path,
+  type = 'teo'
 ) {
-    file_number <- getOption('teo_base_path') %>% 
-        fs::dir_ls(regexp = type) %>%
-        length() + 1 
-
-    local_path <- getOption('teo_base_path') %>% 
-        fs::path(
-         str_c(type, '_' , file_number), 
-         ext = fs::path_ext(path))
-
-    if(grepl("^(https|http)://", path)){
-        curl::curl_download(url = path, dest = local_path)
-    } else {
-      fs::file_copy(path, local_path)
-    }
-    
-    if(fs::path_ext(local_path) == 'mp4'){
-      convert_to_webm(local_path)
-    }
+  file_number <- getOption('teo_base_path') %>% 
+    fs::dir_ls(regexp = type) %>%
+    length() + 1 
+  
+  local_path <- getOption('teo_base_path') %>% 
+    fs::path(
+      str_c(type, '_' , file_number), 
+      ext = fs::path_ext(path))
+  
+  if(grepl("^(https|http)://", path)){
+    curl::curl_download(url = path, dest = local_path)
+  } else {
+    fs::file_copy(path, local_path)
+  }
+  
+  if(fs::path_ext(local_path) == 'mp4'){
+    convert_to_webm(local_path)
+  }
 }
 
 #' Converts a given video file to webm format
@@ -52,40 +74,48 @@ convert_to_webm <- function(path){
 #' 
 #' @export
 print.teo_picture <- function(x, ...){
-    content_path <- getOption('teo_base_path') %>% 
-        fs::dir_ls(regexp = x) %>%
-        sample(size = 1)
-    
-    if(!fs::file_exists(fs::path_temp(basename(content_path)))){
-      fs::file_copy(content_path, fs::path_temp())
-    }
-    
-    content_type <- fs::path_ext(content_path)
-    
-    content <- switch(content_type,
-      'jpeg'=,
-      'jpg' =,
-      'png' = tags$image(
-        x, 
-        class = "centred", 
-        src = fs::path('..', basename(content_path)),
-        style = "height:100vh; display:block; margin-left:auto; margin-right:auto;"),
-      'webm' =  tags$video(
-          class = 'centred', controls = TRUE, autoplay = TRUE,
-          style = "height:100vh; display:block; margin-left:auto; margin-right:auto;"
-        ) %>% 
-        tagAppendChild(
-          tags$source(
-            src = fs::path('..', basename(content_path)),
-            type = fs::path('video', content_type)
-        )),
-      str_glue("content could not be rendered : {content_path}") 
-    )
-    
-    htmlwidgets::createWidget(
-      'example', list(),
-      width = 1, height = 1
+  all_content <- getOption('teo_base_path') %>%  fs::dir_ls()
+  all_names <- all_content %>% basename()
+  
+  content_path <- x %>% purrr::map(
+      ~ all_content[str_detect(all_names, .x)]
     ) %>%
+    purrr::reduce(intersect) %>%
+    sample(size = 1)
+  
+  x <- str_flatten(x , ' + ')
+  
+  if(!fs::file_exists(fs::path_temp(basename(content_path)))){
+    fs::file_copy(content_path, fs::path_temp())
+  }
+  
+  content_type <- fs::path_ext(content_path)
+  
+  content <- switch(
+    content_type,
+    'jpeg'=,
+    'jpg' =,
+    'png' = tags$image(
+      x, 
+      class = "centred", 
+      src = fs::path('..', basename(content_path)),
+      style = "height:100vh; display:block; margin-left:auto; margin-right:auto;"),
+    'webm' =  tags$video(
+      class = 'centred', controls = TRUE, autoplay = TRUE,
+      style = "height:100vh; display:block; margin-left:auto; margin-right:auto;"
+    ) %>% 
+      tagAppendChild(
+        tags$source(
+          src = fs::path('..', basename(content_path)),
+          type = fs::path('video', content_type)
+        )),
+    str_glue("content could not be rendered : {content_path}") 
+  )
+  
+  htmlwidgets::createWidget(
+    'example', list(),
+    width = 1, height = 1
+  ) %>%
     htmlwidgets::prependContent(content) %>%
     htmlwidgets:::print.htmlwidget()
 }
