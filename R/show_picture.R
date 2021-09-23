@@ -90,6 +90,7 @@ print.teo_picture <- function(x, ...){
   }
   
   content_type <- fs::path_ext(content_path)
+  style <- "max-height:100vh; max-width:100vh;display:block; margin-left:auto; margin-right:auto;"
   
   content <- switch(
     content_type,
@@ -99,10 +100,10 @@ print.teo_picture <- function(x, ...){
       x, 
       class = "centred", 
       src = fs::path('..', basename(content_path)),
-      style = "height:100vh; display:block; margin-left:auto; margin-right:auto;"),
+      style = style),
     'webm' =  tags$video(
       class = 'centred', controls = TRUE, autoplay = TRUE,
-      style = "height:100vh; display:block; margin-left:auto; margin-right:auto;"
+      style = style
     ) %>% 
       tagAppendChild(
         tags$source(
